@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use mysql::prelude::*;
-use mysql::{PooledConn, params}; // Import params macro
+use mysql::{PooledConn, params};
 use mysql::Pool;
 use tauri::State;
 
