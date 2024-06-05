@@ -6,7 +6,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "pre-tpa-desktop",
+    "productName": "SR Exam",
     "version": "0.0.0"
   },
   "tauri": {
@@ -19,7 +19,7 @@
     },
     "windows": [
       {
-        "title": "pre-tpa-desktop",
+        "title": "SR Exam",
         "width": 800,
         "height": 600
       }

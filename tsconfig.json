@@ -20,6 +20,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"],
+  "include": ["src", "graphql-server/src/index.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
