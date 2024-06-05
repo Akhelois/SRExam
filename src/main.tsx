@@ -10,6 +10,7 @@ import ViewSchedulePage from './routes/OtherRole/SubjectDeveloment/ExamCoordinat
 import SubjectManagement from "./routes/OtherRole/SubjectDeveloment/SubjectManagement";
 import UserManagement from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator/UserManagement";
 import RoomManagement from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator/RoomManagement";
+import ExamScheduler from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator/ExamScheduler";
 import { QueryClient, QueryClientProvider } from 'react-query';
 
 const queryClient = new QueryClient();
@@ -46,6 +47,10 @@ const router = createBrowserRouter([
   {
     path: "/room_management",
     element: <RoomManagement/>
+  },
+  {
+    path: "/exam_scheduler",
+    element: <ExamScheduler/>
   }
 ])
 

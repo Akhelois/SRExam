@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api';
 import NavBarComponent from "../../../../components/ExamCoordinator/NavBarComponents";
 
-interface User {
+type User = {
   bn_number: string;
   nim: string;
   name: string;
   major: string;
   role: string;
-  initial: string | null;
-}
+  initial?: string;
+};
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
@@ -20,49 +21,67 @@ export default function UserManagement() {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/get_all_users');
-      const data = await response.json();
-      setUsers(data);
-      setFilteredUsers(data);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
-  };
+  const fetchUsers = () => {
+    invoke<User[]>('get_all_users', {})
+      .then((users) => {
+        console.log('Fetched users:', users); 
+        setUsers(users);
+      })
+      .catch((error) => {
+        console.error('Error fetching users:', error);
+      });
+  };  
 
   const handleRoleFilterChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setRoleFilter(event.target.value);
-    if (event.target.value === 'All') {
+    const selectedRole = event.target.value;
+    setRoleFilter(selectedRole);
+    if (selectedRole === 'All') {
       setFilteredUsers(users);
     } else {
-      const filtered = users.filter(user => user.role === event.target.value);
+      const filtered = users.filter(user => user.role === selectedRole);
       setFilteredUsers(filtered);
     }
-  };
-
+  };  
+  
   const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
+    const query = event.target.value.toLowerCase();
+    setSearchQuery(query);
     const filtered = users.filter(user => {
       const { name, initial, nim } = user;
-      return name.toLowerCase().includes(event.target.value.toLowerCase()) ||
-             (initial && initial.toLowerCase().includes(event.target.value.toLowerCase())) ||
-             nim.includes(event.target.value);
+      return name.toLowerCase().includes(query) ||
+             (initial && initial.toLowerCase().includes(query)) ||
+             nim.includes(query);
     });
     setFilteredUsers(filtered);
-  };
+  };  
+
+  const handleRoleEdit = (bn_number: string, newRole: string) => {
+    invoke('edit_role', { bnNumber: bn_number, newRole: newRole })
+      .then(() => {
+        const updatedUsers = users.map(user =>
+          user.bn_number === bn_number ? { ...user, role: newRole } : user
+        );
+        console.log('Updated users:', updatedUsers);
+        setUsers(updatedUsers);
+        const filtered = roleFilter ? updatedUsers.filter(user => user.role === roleFilter) : updatedUsers;
+        setFilteredUsers(filtered);
+      })
+      .catch(error => {
+        console.error('Error updating role:', error);
+      });
+  };  
 
   return (
     <div className='h-screen'>
-        <NavBarComponent/>
+      <NavBarComponent />
       <h1>User Management</h1>
-      <div className='text-black'>
-        <label htmlFor="roleFilter">Filter by Role:</label>
-        <select id="roleFilter" value={roleFilter || 'All'} onChange={handleRoleFilterChange}>
+      <div>
+        <label htmlFor="roleFilter" className='text_white'>Filter by Role:</label>
+        <select id="roleFilter" value={roleFilter || 'All'} onChange={handleRoleFilterChange} className='p-1 w-100 text-black'>
           <option value="All">All</option>
           <option value="Student">Student</option>
           <option value="Assistant">Assistant</option>
-          <option value="Subject Develpment">Subject Develpment</option>
+          <option value="Subject Development">Subject Development</option>
           <option value="Exam Coordinator">Exam Coordinator</option>
         </select>
       </div>
@@ -71,29 +90,42 @@ export default function UserManagement() {
           type="text"
           placeholder="Search by name/initial/NIM"
           value={searchQuery}
+          className='p-2 w-500'
           onChange={handleSearchInputChange}
         />
       </div>
-      <table>
+      <table style={{ borderCollapse: 'collapse', width: '100%', backgroundColor: 'white', color: 'black' }}>
         <thead>
           <tr>
-            <th>BN Number</th>
-            <th>NIM</th>
-            <th>Name</th>
-            <th>Major</th>
-            <th>Role</th>
-            <th>Initial</th>
+            <th style={{ border: '1px solid black' }}>BN Number</th>
+            <th style={{ border: '1px solid black' }}>NIM</th>
+            <th style={{ border: '1px solid black' }}>Name</th>
+            <th style={{ border: '1px solid black' }}>Major</th>
+            <th style={{ border: '1px solid black' }}>Role</th>
+            <th style={{ border: '1px solid black' }}>Initial</th>
+            <th style={{ border: '1px solid black' }}>Edit Role</th>
           </tr>
         </thead>
         <tbody>
           {filteredUsers.map(user => (
-            <tr key={user.bn_number}>
-              <td>{user.bn_number}</td>
-              <td>{user.nim}</td>
-              <td>{user.name}</td>
-              <td>{user.major}</td>
-              <td>{user.role}</td>
-              <td>{user.initial || '-'}</td>
+            <tr key={user.bn_number} style={{ border: '1px solid black' }}>
+              <td style={{ border: '1px solid black' }}>{user.bn_number}</td>
+              <td style={{ border: '1px solid black' }}>{user.nim}</td>
+              <td style={{ border: '1px solid black' }}>{user.name}</td>
+              <td style={{ border: '1px solid black' }}>{user.major}</td>
+              <td style={{ border: '1px solid black' }}>{user.role}</td>
+              <td style={{ border: '1px solid black' }}>{user.initial || '-'}</td>
+              <td style={{ border: '1px solid black' }}>
+                <select
+                  value={user.role}
+                  onChange={(e) => handleRoleEdit(user.bn_number, e.target.value)}
+                >
+                  <option value="Student">Student</option>
+                  <option value="Assistant">Assistant</option>
+                  <option value="Subject Development">Subject Development</option>
+                  <option value="Exam Coordinator">Exam Coordinator</option>
+                </select>
+              </td>
             </tr>
           ))}
         </tbody>

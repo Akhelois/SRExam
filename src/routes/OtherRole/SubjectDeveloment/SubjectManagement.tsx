@@ -4,7 +4,7 @@ import 'tailwindcss/tailwind.css';
 import NavBarComponent from "../../../components/ExamCoordinator/NavBarComponents";
 
 type Subject = {
-  subject_code: string;
+  subject_code_str: string;
   subject_name: string;
 };
 
@@ -27,9 +27,9 @@ export default function SubjectManagement() {
 
   const filteredSubjects = subjects.filter(
     (subject) =>
-      subject.subject_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      subject.subject_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      (subject.subject_code_str && subject.subject_code_str.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (subject.subject_name && subject.subject_name.toLowerCase().includes(searchTerm.toLowerCase()))
+  )  
 
   return (
     <div className='h-screen'>
@@ -55,7 +55,7 @@ export default function SubjectManagement() {
             <tbody>
             {filteredSubjects.map((subject, index) => (
                 <tr key={index}>
-                <td className="border px-4 py-2">{subject.subject_code}</td>
+                <td className="border px-4 py-2">{subject.subject_code_str}</td>
                 <td className="border px-4 py-2">{subject.subject_name}</td>
                 </tr>
             ))}
