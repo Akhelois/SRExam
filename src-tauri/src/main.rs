@@ -106,9 +106,8 @@ pub struct ExamTransaction {
     pub room_number: String,
     pub shift_id: String,
     pub transaction_date: String,
-    pub transaction_time: String,
-    pub seat_number: String,
-    pub status: String,
+    pub proctor: Option<String>,
+    pub status: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -192,57 +191,49 @@ fn change_password(
     current_user: State<'_, AppState>,
 ) -> Result<bool, String> {
     let mut conn = mysql_pool.get_conn().map_err(|e| format!("Failed to get connection: {}", e))?;
+    
     let user_guard = current_user.user.lock().map_err(|e| format!("Failed to lock mutex: {}", e))?;
-
+    
     if let Some(current_user) = &*user_guard {
         let nim = &current_user.user.nim;
         let initial = &current_user.user.initial;
+        
         let query = if let Some(initial) = initial {
             "SELECT password FROM users WHERE nim = :nim OR initial = :initial"
         } else {
             "SELECT password FROM users WHERE nim = :nim"
         };
+        
         let params = if let Some(initial) = initial {
             params! { "nim" => nim, "initial" => initial }
         } else {
             params! { "nim" => nim }
         };
+        
         let stored_password: Option<String> = conn.exec_first(query, params).map_err(|e| format!("Failed to execute query: {}", e))?;
-
-        if stored_password.is_none() || stored_password.as_ref().map_or(false, |pw| pw.is_empty()) {
-            // If the stored password is NULL or empty, allow the password change
+        
+        if stored_password.is_none() || stored_password.as_ref().map_or(false, |pw| pw.is_empty()) || verify(&old_password, &stored_password.unwrap()).map_err(|e| format!("Failed to verify password: {}", e))? {
             if !new_password.is_empty() {
                 let hashed_new_password = hash(new_password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
+                
                 let update_query = if let Some(initial) = initial {
-                    "UPDATE users SET password = :new_password WHERE nim = :nim OR initial = :initial"
+                    "UPDATE users SET temp_password = :new_password WHERE nim = :nim OR initial = :initial"
                 } else {
-                    "UPDATE users SET password = :new_password WHERE nim = :nim"
+                    "UPDATE users SET temp_password = :new_password WHERE nim = :nim"
                 };
+                
                 let update_params = if let Some(initial) = initial {
                     params! { "nim" => nim, "initial" => initial, "new_password" => hashed_new_password }
                 } else {
                     params! { "nim" => nim, "new_password" => hashed_new_password }
                 };
+                
                 conn.exec_drop(update_query, update_params).map_err(|e| format!("Failed to update password: {}", e))?;
-                return Ok(true);
-            } else {
-                return Err("New password cannot be empty".to_string());
-            }
-        } else if verify(&old_password, &stored_password.unwrap()).map_err(|e| format!("Failed to verify password: {}", e))? {
-            // If the old password provided by the user is correct, allow the password change
-            if !new_password.is_empty() {
-                let hashed_new_password = hash(new_password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
-                let update_query = if let Some(initial) = initial {
-                    "UPDATE users SET password = :new_password WHERE nim = :nim OR initial = :initial"
-                } else {
-                    "UPDATE users SET password = :new_password WHERE nim = :nim"
-                };
-                let update_params = if let Some(initial) = initial {
-                    params! { "nim" => nim, "initial" => initial, "new_password" => hashed_new_password }
-                } else {
-                    params! { "nim" => nim, "new_password" => hashed_new_password }
-                };
-                conn.exec_drop(update_query, update_params).map_err(|e| format!("Failed to update password: {}", e))?;
+                
+                let clear_password_query = "UPDATE users SET password = temp_password, temp_password = NULL WHERE nim = :nim";
+                let clear_params = params! { "nim" => nim };
+                conn.exec_drop(clear_password_query, clear_params).map_err(|e| format!("Failed to clear password: {}", e))?;
+                
                 return Ok(true);
             } else {
                 return Err("New password cannot be empty".to_string());
@@ -416,16 +407,15 @@ async fn get_exam_transaction(mysql_pool: State<'_, Pool>) -> Result<Vec<ExamTra
     let mut conn = mysql_pool.get_conn().map_err(|e| format!("Failed to get connection: {}", e))?;
 
     let transactions: Vec<ExamTransaction> = conn.query_map(
-        "SELECT transaction_id, subject_code, room_number, shift_id, transaction_date, transaction_time, seat_number, status FROM exam_transaction",
-        |(transaction_id, subject_code, room_number, shift_id, transaction_date, transaction_time, seat_number, status)| {
+        "SELECT transaction_id, subject_code, room_number, shift_id, transaction_date, proctor, status FROM exam_transaction",
+        |(transaction_id, subject_code, room_number, shift_id, transaction_date, proctor, status)| {
             ExamTransaction {
                 transaction_id,
                 subject_code,
                 room_number,
                 shift_id,
                 transaction_date,
-                transaction_time,
-                seat_number,
+                proctor,
                 status,
             }
         }
@@ -665,8 +655,7 @@ fn create_exam_transaction_if_not_exists(conn: &mut PooledConn) -> Result<(), my
             room_number VARCHAR(255) NOT NULL,
             shift_id VARCHAR(1) NOT NULL,
             transaction_date DATE NOT NULL,
-            transaction_time TIME,
-            seat_number VARCHAR(50),
+            proctor VARCHAR(50),
             status VARCHAR(50),
             FOREIGN KEY (subject_code) REFERENCES subject(subject_code),
             FOREIGN KEY (room_number) REFERENCES room(room_number),

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api';
 import { useNavigate } from 'react-router-dom';
-import NavBarComponent from './../components/NavBarComponent';
+import ASNavBarComponent from './../components/NavBarComponent';
+import ExamCoordinatorNavBarComponent from "../components/ExamCoordinator/NavBarComponents";
+import SubjectDevelopmentNavBarComponent from "../components/SubjectDevelopment/NavBarComponent";
 
 type User = {
   bn_number: string;
@@ -14,6 +16,7 @@ type User = {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     oldPassword: "",
@@ -87,8 +90,18 @@ export default function ProfilePage() {
     return <p>Loading...</p>;
   }
 
+  let NavBarComponent;
+
+  if (currentUser?.role === 'Exam Coordinator') {
+    NavBarComponent = ExamCoordinatorNavBarComponent;
+  } else if (currentUser?.role === 'Subject Development') {
+    NavBarComponent = SubjectDevelopmentNavBarComponent;
+  } else {
+    NavBarComponent = ASNavBarComponent;
+  }
+
   return (
-    <div className="h-screen bg-zinc-950">
+    <div className="h-screen">
       <NavBarComponent />
       <div className="p-8">
         <h1 className="text-3xl text-white mb-8">Profile Page</h1>
