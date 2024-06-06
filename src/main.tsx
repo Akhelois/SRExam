@@ -55,7 +55,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/exam_transaction_detail",
-    // element: <ExamTransactionDetail/>
+    element: <ExamTransactionDetail transaction_id={""}/>
   }
 ])
 

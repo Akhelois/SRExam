@@ -1,22 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Table, Modal, Form, Input, message } from 'antd';
-import {
-  getExamTransactionDetails,
-  downloadTransactionCase,
-  updateSeat,
-  addTimeExtension,
-  markCheating,
-  manualUploadAnswer,
-  downloadStudentAnswer,
-  verifyTransaction,
-} from './api';
 
-type Student =  {
+type Student = {
   nim: string;
   name: string;
   seat: string;
   status: string;
-}
+};
 
 type TransactionDetails = {
   subjectCode: string;
@@ -28,13 +18,50 @@ type TransactionDetails = {
   students: Student[];
   notes: string[];
   status: string;
-}
+};
 
 type ExamTransactionDetailProps = {
   transaction_id: string;
-}
+};
 
-const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transaction_id }) => {
+const mockApi = {
+  getExamTransactionDetails: async (transaction_id: string): Promise<TransactionDetails> => {
+    return {
+      subjectCode: 'CS101',
+      subjectName: 'Computer Science',
+      class: 'A',
+      room: 'Room 1',
+      date: '2024-06-06',
+      time: '10:00',
+      students: [
+        { nim: '12345', name: 'John Doe', seat: 'A1', status: 'Submitted' },
+        { nim: '67890', name: 'Jane Smith', seat: 'A2', status: 'Not Submitted' },
+      ],
+      notes: ['Note 1', 'Note 2'],
+      status: 'Pending',
+    };
+  },
+  updateSeat: async (transaction_id: string, nim: string, newSeat: string, reason: string) => {
+    return { success: true };
+  },
+  addTimeExtension: async (transaction_id: string, nim: string | null, extensionMinutes: number, reason: string) => {
+    return { success: true };
+  },
+  markCheating: async (transaction_id: string, nim: string, description: string, evidence: File) => {
+    return { success: true };
+  },
+  manualUploadAnswer: async (transaction_id: string, nim: string, answerFile: File) => {
+    return { success: true };
+  },
+  downloadStudentAnswer: async (transaction_id: string, nim: string) => {
+    return { success: true };
+  },
+  verifyTransaction: async (transaction_id: string) => {
+    return { success: true };
+  },
+};
+
+export default function ExamTransactionDetail({ transaction_id }: ExamTransactionDetailProps) {
   const [transactionDetails, setTransactionDetails] = useState<TransactionDetails | null>(null);
   const [viewMode, setViewMode] = useState<'seatMapping' | 'studentDetails'>('seatMapping');
   const [modalVisible, setModalVisible] = useState(false);
@@ -44,7 +71,7 @@ const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transacti
 
   useEffect(() => {
     async function fetchDetails() {
-      const details = await getExamTransactionDetails(transaction_id);
+      const details = await mockApi.getExamTransactionDetails(transaction_id);
       setTransactionDetails(details);
     }
     fetchDetails();
@@ -54,10 +81,9 @@ const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transacti
     if (currentStudent) {
       const { newSeat, reason } = values;
       try {
-        await updateSeat(transaction_id, currentStudent.nim, newSeat, reason);
+        await mockApi.updateSeat(transaction_id, currentStudent.nim, newSeat, reason);
         message.success('Seat updated successfully');
         setModalVisible(false);
-        // refresh data
       } catch (error) {
         message.error('Failed to update seat');
       }
@@ -67,10 +93,9 @@ const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transacti
   const handleTimeExtension = async (values: { extensionMinutes: number; reason: string }) => {
     const { extensionMinutes, reason } = values;
     try {
-      await addTimeExtension(transaction_id, currentStudent ? currentStudent.nim : null, extensionMinutes, reason);
+      await mockApi.addTimeExtension(transaction_id, currentStudent ? currentStudent.nim : null, extensionMinutes, reason);
       message.success('Time extension granted');
       setModalVisible(false);
-      // refresh data
     } catch (error) {
       message.error('Failed to grant time extension');
     }
@@ -80,10 +105,9 @@ const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transacti
     if (currentStudent) {
       const { description, evidence } = values;
       try {
-        await markCheating(transaction_id, currentStudent.nim, description, evidence);
+        await mockApi.markCheating(transaction_id, currentStudent.nim, description, evidence);
         message.success('Cheating marked successfully');
         setModalVisible(false);
-        // refresh data
       } catch (error) {
         message.error('Failed to mark cheating');
       }
@@ -94,10 +118,9 @@ const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transacti
     if (currentStudent) {
       const { answerFile } = values;
       try {
-        await manualUploadAnswer(transaction_id, currentStudent.nim, answerFile);
+        await mockApi.manualUploadAnswer(transaction_id, currentStudent.nim, answerFile);
         message.success('Answer uploaded successfully');
         setModalVisible(false);
-        // refresh data
       } catch (error) {
         message.error('Failed to upload answer');
       }
@@ -106,7 +129,7 @@ const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transacti
 
   const handleDownloadAnswer = async (nim: string) => {
     try {
-      await downloadStudentAnswer(transaction_id, nim);
+      await mockApi.downloadStudentAnswer(transaction_id, nim);
       message.success('Answer downloaded successfully');
     } catch (error) {
       message.error('Failed to download answer');
@@ -115,9 +138,8 @@ const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transacti
 
   const handleVerifyTransaction = async () => {
     try {
-      await verifyTransaction(transaction_id);
+      await mockApi.verifyTransaction(transaction_id);
       message.success('Transaction verified successfully');
-      // refresh data
     } catch (error) {
       message.error('Failed to verify transaction');
     }
@@ -227,9 +249,7 @@ const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transacti
         {transactionDetails?.notes.map((note, index) => (
           <p key={index}>{note}</p>
         ))}
-        <Form layout="vertical" onFinish={(values) => {
-          // add transaction note
-        }}>
+        <Form layout="vertical" onFinish={(values) => {}}>
           <Form.Item name="note" label="Add Note">
             <Input.TextArea />
           </Form.Item>
@@ -328,6 +348,4 @@ const ExamTransactionDetail: React.FC<ExamTransactionDetailProps> = ({ transacti
       </Modal>
     </div>
   );
-};
-
-export default ExamTransactionDetail;
+}
