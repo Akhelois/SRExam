@@ -212,34 +212,34 @@ fn change_password(
         
         let stored_password: Option<String> = conn.exec_first(query, params).map_err(|e| format!("Failed to execute query: {}", e))?;
         
-        if stored_password.is_none() || stored_password.as_ref().map_or(false, |pw| pw.is_empty()) || verify(&old_password, &stored_password.unwrap()).map_err(|e| format!("Failed to verify password: {}", e))? {
-            if !new_password.is_empty() {
-                let hashed_new_password = hash(new_password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
-                
-                let update_query = if let Some(initial) = initial {
-                    "UPDATE users SET temp_password = :new_password WHERE nim = :nim OR initial = :initial"
+        if let Some(stored_password) = stored_password {
+            if stored_password.is_empty() || verify(&old_password, &stored_password).map_err(|e| format!("Failed to verify password: {}", e))? {
+                if !new_password.is_empty() {
+                    let hashed_new_password = hash(new_password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
+                    
+                    let update_query = if let Some(initial) = initial {
+                        "UPDATE users SET password = :new_password WHERE nim = :nim OR initial = :initial"
+                    } else {
+                        "UPDATE users SET password = :new_password WHERE nim = :nim"
+                    };
+                    
+                    let update_params = if let Some(initial) = initial {
+                        params! { "nim" => nim, "initial" => initial, "new_password" => hashed_new_password }
+                    } else {
+                        params! { "nim" => nim, "new_password" => hashed_new_password }
+                    };
+                    
+                    conn.exec_drop(update_query, update_params).map_err(|e| format!("Failed to update password: {}", e))?;
+                    
+                    return Ok(true);
                 } else {
-                    "UPDATE users SET temp_password = :new_password WHERE nim = :nim"
-                };
-                
-                let update_params = if let Some(initial) = initial {
-                    params! { "nim" => nim, "initial" => initial, "new_password" => hashed_new_password }
-                } else {
-                    params! { "nim" => nim, "new_password" => hashed_new_password }
-                };
-                
-                conn.exec_drop(update_query, update_params).map_err(|e| format!("Failed to update password: {}", e))?;
-                
-                let clear_password_query = "UPDATE users SET password = temp_password, temp_password = NULL WHERE nim = :nim";
-                let clear_params = params! { "nim" => nim };
-                conn.exec_drop(clear_password_query, clear_params).map_err(|e| format!("Failed to clear password: {}", e))?;
-                
-                return Ok(true);
+                    return Err("New password cannot be empty".to_string());
+                }
             } else {
-                return Err("New password cannot be empty".to_string());
+                return Ok(false);
             }
         } else {
-            return Ok(false);
+            return Err("Stored password is NULL".to_string());
         }
     }
     Err("Current user not authenticated".to_string())

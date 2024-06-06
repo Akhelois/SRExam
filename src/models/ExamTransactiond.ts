@@ -1,5 +1,5 @@
 interface ExamTransaction {
-    transactionID : String,
+    transaction_id : String,
     subject_code : String,
     room_number : String,
     shift_id : String,

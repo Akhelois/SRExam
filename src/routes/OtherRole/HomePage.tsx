@@ -3,6 +3,7 @@ import ExamCoordinatorNavBarComponent from "../../components/ExamCoordinator/Nav
 import AssistantNavBarComponent from "../../components/NavBarComponent";
 import SubjectDevelopmentNavBarComponent from "../../components/SubjectDevelopment/NavBarComponent";
 import { invoke } from "@tauri-apps/api";
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 
 type ExamTransaction = {
   transaction_id: string;
@@ -79,7 +80,9 @@ export default function HomePage() {
                     <span className="flex-1">{transaction.transaction_time}</span>
                     <span className="flex-1">{transaction.seat_number}</span>
                     <span className="flex-1">{transaction.status}</span>
-                    <a href="#" className="flex-1"> ? </a>
+                    <RouterLink to={"/other_role_home_page"}>
+                      <a href="" className="flex-1"> ? </a>
+                    </RouterLink>
                   </div>
                 </li>
               ))}

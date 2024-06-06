@@ -49,7 +49,7 @@ export default function RoomManagement() {
       if (selectedDate && selectedRoom) {
         try {
           const fetchedTransactions = await invoke<RoomTransaction[]>('get_room_transaction', {
-            date: selectedDate.toISOString().split('T')[0],
+            date: selectedDate?.toISOString().split('T')[0] || '',
             room_number: selectedRoom,
           });
           console.log('Fetched Transactions:', fetchedTransactions); 
@@ -103,12 +103,13 @@ export default function RoomManagement() {
   };
 
   const handleTransactionSelect = (transaction: RoomTransaction) => {
-    if (selectedTransactions.has(transaction.shift_id)) {
-      selectedTransactions.delete(transaction.shift_id);
+    const updatedTransactions = new Set(selectedTransactions);
+    if (updatedTransactions.has(transaction.shift_id)) {
+      updatedTransactions.delete(transaction.shift_id);
     } else {
-      selectedTransactions.add(transaction.shift_id);
+      updatedTransactions.add(transaction.shift_id);
     }
-    setSelectedTransactions(new Set(selectedTransactions));
+    setSelectedTransactions(updatedTransactions);
   };
 
   const filteredRooms = rooms.filter((room) =>
@@ -148,6 +149,8 @@ export default function RoomManagement() {
               />
             </div>
           </div>
+        </div>
+        <div className="w-full max-w-4xl p-4 bg-white rounded-lg shadow-md text-black mt-4 overflow-x-auto">
           <div className="mb-4">
             <label htmlFor="room" className="block mb-2 font-bold">
               Select Room
@@ -166,38 +169,28 @@ export default function RoomManagement() {
               ))}
             </select>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left table-auto">
-              <thead>
-                <tr>
-                  <th className="px-4 py-2 border">Room Number</th>
-                  <th className="px-4 py-2 border">Room Capacity</th>
-                  <th className="px-4 py-2 border">Shift ID</th>
-                  <th className="px-4 py-2 border">Start Time</th>
-                  <th className="px-4 py-2 border">End Time</th>
-                  <th className="px-4 py-2 border">Select</th>
+          <table className="w-full text-left table-auto">
+            <thead>
+              <tr>
+                <th className="px-4 py-2 border">Room Number</th>
+                <th className="px-4 py-2 border">Room Capacity</th>
+                <th className="px-4 py-2 border">Shift ID</th>
+                <th className="px-4 py-2 border">Start Time</th>
+                <th className="px-4 py-2 border">End Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRooms.map((room) => (
+                <tr key={room.room_number_str}>
+                  <td className="px-4 py-2 border">{room.room_number_str}</td>
+                  <td className="px-4 py-2 border">{room.room_capacity}</td>
+                  <td className="px-4 py-2 border"></td>
+                  <td className="px-4 py-2 border"></td>
+                  <td className="px-4 py-2 border"></td>
                 </tr>
-              </thead>
-              <tbody>
-                {rooms.map((room) => (
-                  <tr key={room.room_number_str}>
-                    <td className="px-4 py-2 border">{room.room_number_str}</td>
-                    <td className="px-4 py-2 border">{room.room_capacity}</td>
-                    <td className="px-4 py-2 border"></td>
-                    <td className="px-4 py-2 border"></td>
-                    <td className="px-4 py-2 border"></td>
-                    <td className="px-4 py-2 border">
-                      <input
-                        type="checkbox"
-                        onChange={() => handleTransactionSelect({ room_number: room.room_number_str, shift_id: '' })}
-                        className="mr-2"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
