@@ -6,11 +6,12 @@ use schema::__fields::Enrollment::class_code;
 use schema::__fields::Query::_get_room_by_number_arguments::room_number as room_number_arg;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use mysql::prelude::*;
+use mysql::{prelude::*, TxOpts};
 use mysql::{PooledConn, params};
 use mysql::Pool;
 use tauri::{State};
 use async_std::task;
+use rand::Rng;
 
 #[cynic::schema("sr-exam")]
 mod schema {}
@@ -592,6 +593,47 @@ async fn insert_subject(conn: &mut PooledConn) -> Result<(), String> {
     Ok(())
 }
 
+
+#[tauri::command]
+async fn insert_exam_transaction(
+    mysql_pool: State<'_, Pool>,
+    subject_code_str: String,
+    room_number_str: String,
+    shift_id: String,
+    transaction_date: String,
+) -> Result<(), String> {
+    let mut conn = mysql_pool.get_conn()
+        .map_err(|e| format!("Failed to get connection: {}", e))?;
+
+    let mut transaction = conn.start_transaction(TxOpts::default())
+        .map_err(|e| format!("Failed to start transaction: {}", e))?;
+
+    let mut rng = rand::thread_rng();
+    let transaction_id: String = format!("TI{:04}", rng.gen_range(0..10000));
+
+    transaction.exec_drop(
+        r"INSERT INTO exam_transaction (
+            transaction_id, subject_code, room_number, shift_id, 
+            transaction_date
+        ) VALUES (
+            :transaction_id, :subject_code, :room_number, :shift_id, 
+            :transaction_date
+        )",
+        params! {
+            "transaction_id" => &transaction_id,
+            "subject_code" => &subject_code_str,
+            "room_number" => &room_number_str,
+            "shift_id" => &shift_id,
+            "transaction_date" => &transaction_date,
+        },
+    ).map_err(|e| format!("Failed to execute query: {}", e))?;
+
+    transaction.commit()
+        .map_err(|e| format!("Failed to commit transaction: {}", e))?;
+
+    Ok(())
+}
+
 fn create_users_table_if_not_exists(conn: &mut PooledConn) -> Result<(), mysql::Error> {
     conn.exec_drop(
         r"CREATE TABLE IF NOT EXISTS users (
@@ -660,9 +702,9 @@ fn create_exam_transaction_if_not_exists(conn: &mut PooledConn) -> Result<(), my
             room_number VARCHAR(255) NOT NULL,
             shift_id VARCHAR(1) NOT NULL,
             transaction_date DATE NOT NULL,
-            transaction_time TIME NOT NULL,
-            seat_number VARCHAR(50) NOT NULL,
-            status VARCHAR(50) NOT NULL,
+            transaction_time TIME,
+            seat_number VARCHAR(50),
+            status VARCHAR(50),
             FOREIGN KEY (subject_code) REFERENCES subject(subject_code),
             FOREIGN KEY (room_number) REFERENCES room(room_number),
             FOREIGN KEY (shift_id) REFERENCES shift(shift_id)
@@ -717,7 +759,8 @@ fn main() {
             change_password,
             edit_role,
             get_room_transaction,
-            get_exam_transaction
+            get_exam_transaction,
+            insert_exam_transaction
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");

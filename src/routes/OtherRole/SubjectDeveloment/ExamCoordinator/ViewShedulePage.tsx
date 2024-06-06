@@ -137,7 +137,6 @@ export default function ViewSchedule() {
                                     <td className="border px-4 py-2 text-black">{student.nim}</td>
                                     <td className="border px-4 py-2 text-black">{student.major}</td>
                                     <td className="border px-4 py-2">
-                                        {/* Example schedule data */}
                                         <div
                                             className="bg-red-600 p-2 rounded"
                                             onMouseEnter={() => handleHover({ type: 'Exam', time: '10:00 - 12:00', description: 'Math Exam' })}
