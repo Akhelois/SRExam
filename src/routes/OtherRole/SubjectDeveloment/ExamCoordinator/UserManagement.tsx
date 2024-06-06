@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api';
 import NavBarComponent from "../../../../components/ExamCoordinator/NavBarComponents";
+import Modal from 'react-modal';
 
 type User = {
   bn_number: string;
@@ -16,10 +17,31 @@ export default function UserManagement() {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (roleFilter === 'All' || !roleFilter) {
+      setFilteredUsers(users);
+    } else {
+      setFilteredUsers(users.filter(user => user.role === roleFilter));
+    }
+  }, [roleFilter, users]);
+
+  useEffect(() => {
+    setFilteredUsers(users.filter(user => {
+      const { name, initial, nim } = user;
+      return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             (initial && initial.toLowerCase().includes(searchQuery.toLowerCase())) ||
+             nim.includes(searchQuery);
+    }));
+  }, [searchQuery, users]);
 
   const fetchUsers = () => {
     invoke<User[]>('get_all_users', {})
@@ -30,30 +52,15 @@ export default function UserManagement() {
       .catch((error) => {
         console.error('Error fetching users:', error);
       });
-  };  
+  };
 
   const handleRoleFilterChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedRole = event.target.value;
-    setRoleFilter(selectedRole);
-    if (selectedRole === 'All') {
-      setFilteredUsers(users);
-    } else {
-      const filtered = users.filter(user => user.role === selectedRole);
-      setFilteredUsers(filtered);
-    }
-  };  
-  
+    setRoleFilter(event.target.value);
+  };
+
   const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const query = event.target.value.toLowerCase();
-    setSearchQuery(query);
-    const filtered = users.filter(user => {
-      const { name, initial, nim } = user;
-      return name.toLowerCase().includes(query) ||
-             (initial && initial.toLowerCase().includes(query)) ||
-             nim.includes(query);
-    });
-    setFilteredUsers(filtered);
-  };  
+    setSearchQuery(event.target.value);
+  };
 
   const handleRoleEdit = (bn_number: string, newRole: string) => {
     invoke('edit_role', { bnNumber: bn_number, newRole: newRole })
@@ -63,20 +70,47 @@ export default function UserManagement() {
         );
         console.log('Updated users:', updatedUsers);
         setUsers(updatedUsers);
-        const filtered = roleFilter ? updatedUsers.filter(user => user.role === roleFilter) : updatedUsers;
-        setFilteredUsers(filtered);
       })
       .catch(error => {
         console.error('Error updating role:', error);
       });
-  };  
+  };
+
+  const openModal = (user: User) => {
+    setSelectedUser(user);
+    setSelectedRole(user.role);
+    setErrorMessage('');
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedUser(null);
+  };
+
+  const handleRoleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedRole(event.target.value);
+  };
+
+  const handleSave = () => {
+    if (selectedUser) {
+      if (selectedRole === "Choose Role") {
+        setErrorMessage("Please choose a valid role.");
+      } else if (selectedRole === selectedUser.role) {
+        setErrorMessage("You have chosen the same role.");
+      } else {
+        handleRoleEdit(selectedUser.bn_number, selectedRole);
+        closeModal();
+      }
+    }
+  };
 
   return (
     <div className='h-screen'>
       <NavBarComponent />
-      <h1>User Management</h1>
+      <h1 className='text-white'>User Management</h1>
       <div>
-        <label htmlFor="roleFilter" className='text_white'>Filter by Role:</label>
+        <label htmlFor="roleFilter" className='text-white'>Filter by Role:</label>
         <select id="roleFilter" value={roleFilter || 'All'} onChange={handleRoleFilterChange} className='p-1 w-100 text-black'>
           <option value="All">All</option>
           <option value="Student">Student</option>
@@ -90,7 +124,7 @@ export default function UserManagement() {
           type="text"
           placeholder="Search by name/initial/NIM"
           value={searchQuery}
-          className='p-2 w-500'
+          className='p-2 w-500 text-white'
           onChange={handleSearchInputChange}
         />
       </div>
@@ -116,20 +150,31 @@ export default function UserManagement() {
               <td style={{ border: '1px solid black' }}>{user.role}</td>
               <td style={{ border: '1px solid black' }}>{user.initial || '-'}</td>
               <td style={{ border: '1px solid black' }}>
-                <select
-                  value={user.role}
-                  onChange={(e) => handleRoleEdit(user.bn_number, e.target.value)}
-                >
-                  <option value="Student">Student</option>
-                  <option value="Assistant">Assistant</option>
-                  <option value="Subject Development">Subject Development</option>
-                  <option value="Exam Coordinator">Exam Coordinator</option>
-                </select>
+                <button onClick={() => openModal(user)} className='bg-black text-white w-100'>Edit Role</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <Modal
+        isOpen={isModalOpen}
+        onRequestClose={closeModal}
+        contentLabel="Edit Role"
+      >
+        <h2 className='text-black'>Edit Role for {selectedUser?.name}</h2>
+        <select value={selectedRole} onChange={handleRoleChange} className='text-black'>
+          <option value="Choose Role">Choose Role</option>
+          <option value="Student">Student</option>
+          <option value="Assistant">Assistant</option>
+          <option value="Subject Development">Subject Development</option>
+          <option value="Exam Coordinator">Exam Coordinator</option>
+        </select>
+        {errorMessage && <p className='text-red-500'>{errorMessage}</p>}
+        <button onClick={handleSave} className='text-black'>Save</button>
+        <button onClick={closeModal} className='text-black'>Cancel</button>
+      </Modal>
     </div>
   );
 }
+
+Modal.setAppElement('#root');

@@ -147,28 +147,20 @@ impl MySQLConfig {
 }
 
 #[tauri::command]
-fn login(name: String, password: String, mysql_pool: State<'_, Pool>, current_user: State<'_, AppState>) -> Result<Option<String>, String> {
-    let mut conn: PooledConn = mysql_pool.get_conn().map_err(|e| format!("Failed to get connection: {}", e))?;
+fn login(
+    name: String,
+    password: String,
+    mysql_pool: State<'_, Pool>,
+    current_user: State<'_, AppState>,
+) -> Result<Option<String>, String> {
+    let mut conn = mysql_pool.get_conn().map_err(|e| format!("Failed to get connection: {}", e))?;
     let is_nim = name.chars().all(char::is_numeric);
 
-    let result: Option<(String, String, String, Option<String>, String, String, Option<String>)> = conn.exec_first(
-        "SELECT bn_number, name, major, initial, nim, role, password FROM users WHERE nim = :name OR initial = :name",
-        params! {
-            "name" => name.clone(),
-        }
-    ).map_err(|e| format!("Failed to execute query: {}", e))?;
+    let query = "SELECT bn_number, name, major, initial, nim, role, password FROM users WHERE nim = :name OR initial = :name";
+    let params = params! { "name" => name.clone() };
+    let result: Option<(String, String, String, Option<String>, String, String, Option<String>)> = conn.exec_first(query, params).map_err(|e| format!("Failed to execute query: {}", e))?;
 
     if let Some((bn_number, name, major, initial, nim, role, stored_password)) = result {
-        let selected_username = if let Some(_) = stored_password {
-            if is_nim {
-                nim.clone()
-            } else {
-                initial.clone().unwrap_or_default()
-            }
-        } else {
-            name.clone()
-        };
-
         if stored_password.is_none() || verify(&password, &stored_password.unwrap_or_default()).map_err(|e| format!("Failed to verify password: {}", e))? {
             let user = User {
                 bn_number: bn_number.into(),
@@ -188,9 +180,8 @@ fn login(name: String, password: String, mysql_pool: State<'_, Pool>, current_us
         } else {
             return Ok(None);
         }
-    } else {
-        return Ok(None);
     }
+    Ok(None)
 }
 
 #[tauri::command]
@@ -200,95 +191,67 @@ fn change_password(
     mysql_pool: State<'_, Pool>,
     current_user: State<'_, AppState>,
 ) -> Result<bool, String> {
-    let mut conn: PooledConn = mysql_pool
-        .get_conn()
-        .map_err(|e| format!("Failed to get connection: {}", e))?;
-
-    let user_guard = current_user
-        .user
-        .lock()
-        .map_err(|e| format!("Failed to lock mutex: {}", e))?;
+    let mut conn = mysql_pool.get_conn().map_err(|e| format!("Failed to get connection: {}", e))?;
+    let user_guard = current_user.user.lock().map_err(|e| format!("Failed to lock mutex: {}", e))?;
 
     if let Some(current_user) = &*user_guard {
         let nim = &current_user.user.nim;
         let initial = &current_user.user.initial;
-        let stored_password: Option<String> = if let Some(initial) = initial {
-            conn.exec_first(
-                "SELECT password FROM users WHERE nim = :nim OR initial = :initial",
-                params! {
-                    "nim" => nim,
-                    "initial" => initial,
-                },
-            )
+        let query = if let Some(initial) = initial {
+            "SELECT password FROM users WHERE nim = :nim OR initial = :initial"
         } else {
-            conn.exec_first(
-                "SELECT password FROM users WHERE nim = :nim",
-                params! {
-                    "nim" => nim,
-                },
-            )
-        }
-        .map_err(|e| format!("Failed to execute query: {}", e))?;
+            "SELECT password FROM users WHERE nim = :nim"
+        };
+        let params = if let Some(initial) = initial {
+            params! { "nim" => nim, "initial" => initial }
+        } else {
+            params! { "nim" => nim }
+        };
+        let stored_password: Option<String> = conn.exec_first(query, params).map_err(|e| format!("Failed to execute query: {}", e))?;
 
         if stored_password.is_none() || stored_password.as_ref().map_or(false, |pw| pw.is_empty()) {
-            if !new_password.is_empty() { 
+            // If the stored password is NULL or empty, allow the password change
+            if !new_password.is_empty() {
                 let hashed_new_password = hash(new_password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
-
-                if let Some(initial) = initial {
-                    conn.exec_drop(
-                        "UPDATE users SET password = :new_password WHERE nim = :nim OR initial = :initial",
-                        params! {
-                            "nim" => nim,
-                            "initial" => initial,
-                            "new_password" => hashed_new_password,
-                        },
-                    )
+                let update_query = if let Some(initial) = initial {
+                    "UPDATE users SET password = :new_password WHERE nim = :nim OR initial = :initial"
                 } else {
-                    conn.exec_drop(
-                        "UPDATE users SET password = :new_password WHERE nim = :nim",
-                        params! {
-                            "nim" => nim,
-                            "new_password" => hashed_new_password,
-                        },
-                    )
-                }
-                .map_err(|e| format!("Failed to update password: {}", e))?;
+                    "UPDATE users SET password = :new_password WHERE nim = :nim"
+                };
+                let update_params = if let Some(initial) = initial {
+                    params! { "nim" => nim, "initial" => initial, "new_password" => hashed_new_password }
+                } else {
+                    params! { "nim" => nim, "new_password" => hashed_new_password }
+                };
+                conn.exec_drop(update_query, update_params).map_err(|e| format!("Failed to update password: {}", e))?;
                 return Ok(true);
             } else {
                 return Err("New password cannot be empty".to_string());
             }
         } else if verify(&old_password, &stored_password.unwrap()).map_err(|e| format!("Failed to verify password: {}", e))? {
-            if !new_password.is_empty() { // Ensure new password is not empty
+            // If the old password provided by the user is correct, allow the password change
+            if !new_password.is_empty() {
                 let hashed_new_password = hash(new_password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
-
-                if let Some(initial) = initial {
-                    conn.exec_drop(
-                        "UPDATE users SET password = :new_password WHERE nim = :nim OR initial = :initial",
-                        params! {
-                            "nim" => nim,
-                            "initial" => initial,
-                            "new_password" => hashed_new_password,
-                        },
-                    )
+                let update_query = if let Some(initial) = initial {
+                    "UPDATE users SET password = :new_password WHERE nim = :nim OR initial = :initial"
                 } else {
-                    conn.exec_drop(
-                        "UPDATE users SET password = :new_password WHERE nim = :nim",
-                        params! {
-                            "nim" => nim,
-                            "new_password" => hashed_new_password,
-                        },
-                    )
-                }
-                .map_err(|e| format!("Failed to update password: {}", e))?;
+                    "UPDATE users SET password = :new_password WHERE nim = :nim"
+                };
+                let update_params = if let Some(initial) = initial {
+                    params! { "nim" => nim, "initial" => initial, "new_password" => hashed_new_password }
+                } else {
+                    params! { "nim" => nim, "new_password" => hashed_new_password }
+                };
+                conn.exec_drop(update_query, update_params).map_err(|e| format!("Failed to update password: {}", e))?;
                 return Ok(true);
             } else {
                 return Err("New password cannot be empty".to_string());
             }
         } else {
-            return Ok(false); 
+            return Ok(false);
         }
     }
-    Ok(false) 
+    Err("Current user not authenticated".to_string())
 }
 
 #[tauri::command]

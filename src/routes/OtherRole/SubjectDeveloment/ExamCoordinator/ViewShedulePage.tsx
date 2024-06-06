@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api';
 import 'tailwindcss/tailwind.css';
-import NavBarComponent from "../../../../components/ExamCoordinator/NavBarComponents";
+import ExamCoordinatorNavBarComponent from "../../../../components/ExamCoordinator/NavBarComponents";
+import SubjectDevelopmentNavBarComponent from "../../../../components/SubjectDevelopment/NavBarComponent";
 
 type User = {
     bn_number: string;
@@ -21,12 +22,26 @@ type Schedule = {
 export default function ViewSchedule() {
     const [assistants, setAssistants] = useState<User[]>([]);
     const [students, setStudents] = useState<User[]>([]);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [filterGeneration, setFilterGeneration] = useState<string>('');
     const [searchInitial, setSearchInitial] = useState<string>('');
     const [searchNIM, setSearchNIM] = useState<string>('');
     const [hoveredSchedule, setHoveredSchedule] = useState<Schedule | null>(null);
+    const [greeting, setGreeting] = useState("Welcome!");
 
     useEffect(() => {
+        invoke<{ user: User }>('get_current_user').then((currentUser) => {
+            if (currentUser && currentUser.user) {
+              setCurrentUser(currentUser.user);
+              setGreeting(`Welcome ${currentUser.user.role}`);
+            } else {
+              setCurrentUser(null);
+              setGreeting("Welcome Guest");
+            }
+          }).catch((error) => {
+            console.error('Failed to fetch current user:', error);
+          });
+
         invoke<User[]>('get_all_users', {}).then((users) => {
             const assistants = users.filter(user => user.role === 'Assistant');
             const students = users.filter(user => user.role === 'Student');
@@ -42,9 +57,17 @@ export default function ViewSchedule() {
     const filteredAssistants = assistants.filter(assistant => assistant.major.includes(filterGeneration) && assistant.initial?.includes(searchInitial));
     const filteredStudents = students.filter(student => student.nim.includes(searchNIM));
 
+    let NavBarComponent;
+
+    if (currentUser?.role === 'Exam Coordinator') {
+        NavBarComponent = ExamCoordinatorNavBarComponent;
+    } else if (currentUser?.role === 'Subject Development') {
+        NavBarComponent = SubjectDevelopmentNavBarComponent;
+    } 
+
     return (
         <div className="p-4">
-            <NavBarComponent/>
+            {NavBarComponent && <NavBarComponent />}
             <div className="mb-4">
                 <h2 className="text-xl font-bold">View Assistant Schedule</h2>
                 <div className="flex items-center space-x-4">
