@@ -34,8 +34,8 @@ const mockApi = {
       date: '2024-06-06',
       time: '10:00',
       students: [
-        { nim: '12345', name: 'John Doe', seat: 'A1', status: 'Submitted' },
-        { nim: '67890', name: 'Jane Smith', seat: 'A2', status: 'Not Submitted' },
+        { nim: '#', name: '#', seat: '1', status: 'Submitted' },
+        { nim: '#', name: '#', seat: '2', status: 'Not Submitted' },
       ],
       notes: ['Note 1', 'Note 2'],
       status: 'Pending',

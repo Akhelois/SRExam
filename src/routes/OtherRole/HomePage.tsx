@@ -80,7 +80,7 @@ export default function HomePage() {
                     <span className="flex-1">{transaction.transaction_time}</span>
                     <span className="flex-1">{transaction.seat_number}</span>
                     <span className="flex-1">{transaction.status}</span>
-                    <RouterLink to={"/other_role_home_page"}>
+                    <RouterLink to={"/exam_transaction_detail"}>
                       <a href="" className="flex-1"> ? </a>
                     </RouterLink>
                   </div>

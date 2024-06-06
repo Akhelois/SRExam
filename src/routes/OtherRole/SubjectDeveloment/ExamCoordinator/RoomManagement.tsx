@@ -3,9 +3,7 @@ import { invoke } from '@tauri-apps/api';
 import NavBarComponent from '../../../../components/ExamCoordinator/NavBarComponents';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import Tooltip from 'react-tooltip';
-
-// Define the types and components
+import { Tooltip } from 'antd'; // Import Tooltip from antd
 
 export default function RoomManagement() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -17,7 +15,6 @@ export default function RoomManagement() {
   const [shifts, setShifts] = useState<Shift[]>([]);
 
   useEffect(() => {
-    // Fetch rooms
     const fetchRooms = async () => {
       try {
         const fetchedRooms = await invoke<Room[]>('get_all_room');
@@ -28,9 +25,7 @@ export default function RoomManagement() {
     };
     fetchRooms();
   }, []);
-  
-  // Fetch transactions based on selectedDate and selectedRoom
-  
+
   useEffect(() => {
     const fetchTransactions = async () => {
       if (selectedDate && selectedRoom) {
@@ -47,9 +42,8 @@ export default function RoomManagement() {
     };
     fetchTransactions();
   }, [selectedDate, selectedRoom]);
-  
+
   useEffect(() => {
-    // Fetch shifts
     const fetchShifts = async () => {
       try {
         const fetchedShifts = await invoke<Shift[]>('get_all_shifts');
@@ -61,8 +55,6 @@ export default function RoomManagement() {
     fetchShifts();
   }, []);
 
-  // Handle search, date change, room change, transaction selection
-  
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
   };
@@ -85,8 +77,6 @@ export default function RoomManagement() {
     setSelectedTransactions(updatedTransactions);
   };
 
-  // Filter rooms based on search term
-  
   const filteredRooms = rooms.filter((room) =>
     room.room_number_str.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -95,9 +85,7 @@ export default function RoomManagement() {
     <div>
       <NavBarComponent />
       <div className="flex flex-col items-center justify-center h-screen">
-        {/* Search and date selection */}
         <div className="w-full max-w-4xl p-4 bg-white rounded-lg shadow-md text-black">
-          {/* Search */}
           <input
             type="text"
             placeholder="Search rooms..."
@@ -105,7 +93,6 @@ export default function RoomManagement() {
             onChange={handleSearch}
             className="w-full px-4 py-2 border rounded-md"
           />
-          {/* Date Picker */}
           <DatePicker
             selected={selectedDate}
             onChange={handleDateChange}
@@ -114,7 +101,6 @@ export default function RoomManagement() {
           />
         </div>
         
-        {/* Room Selection */}
         <div className="w-full max-w-4xl p-4 bg-white rounded-lg shadow-md text-black mt-4 overflow-x-auto">
           <select
             value={selectedRoom}
@@ -130,7 +116,6 @@ export default function RoomManagement() {
           </select>
         </div>
 
-        {/* Transaction Table */}
         <div className="w-full max-w-4xl p-4 bg-white rounded-lg shadow-md text-black mt-4 overflow-x-auto">
           <table className="w-full text-left table-auto">
             <thead>
@@ -147,49 +132,4 @@ export default function RoomManagement() {
                 <tr key={room.room_number_str}>
                   <td className="px-4 py-2 border">{room.room_number_str}</td>
                   <td className="px-4 py-2 border">{room.room_capacity}</td>
-                  <td className="px-4 py-2 border">
-                    {transactions.map((transaction) => (
-                      <div
-                        key={transaction.shift_id}
-                        className={`cursor-pointer ${
-                          transaction.room_number === room.room_number_str &&
-                          selectedTransactions.has(transaction.shift_id)
-                            ? 'bg-red-500 text-white'
-                            : ''
-                        }`}
-                        title={
-                          transaction.room_number === room.room_number_str &&
-                          `Shift ID: ${transaction.shift_id}`
-                        }
-                        onClick={() => handleTransactionSelect(transaction)}
-                        data-tip
-                        data-for={`tooltip-${transaction.shift_id}`}
-                      >
-                        {transaction.room_number === room.room_number_str && (
-                          <span>{transaction.shift_id}</span>
-                        )}
-                      </div>
-                    ))}
-                    {transactions.map((transaction) => (
-                      <Tooltip
-                        key={transaction.shift_id}
-                        id={`tooltip-${transaction.shift_id}`}
-                        effect="solid"
-                      >
-                        {transaction.room_number === room.room_number_str && (
-                          <span>{`Start Time: ${transaction.start_time} - End Time: ${transaction.end_time}`}</span>
-                        )}
-                      </Tooltip>
-                    ))}
-                  </td>
-                  <td className="px-4 py-2 border"></td>
-                  <td className="px-4 py-2 border"></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
+                  <td className="
