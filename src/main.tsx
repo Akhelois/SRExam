@@ -13,6 +13,7 @@ import RoomManagement from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator
 import ExamScheduler from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator/ExamScheduler";
 import ExamScheduler2 from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator/ExamScheduler2";
 import ExamTransactionDetail from "./routes/OtherRole/ExamTransactionDetail";
+import ReportManagement from "./routes/OtherRole/SubjectDeveloment/ReportManagement";
 import { QueryClient, QueryClientProvider } from 'react-query';
 
 const queryClient = new QueryClient();
@@ -61,6 +62,10 @@ const router = createBrowserRouter([
   {
     path: "/exam_transaction_detail",
     element: <ExamTransactionDetail transaction_id={""}/>
+  },
+  {
+    path: "/report_management",
+    element: <ReportManagement/>
   }
 ])
 
