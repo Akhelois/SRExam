@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Table, Modal, Form, Input, message } from 'antd';
+import { useNavigate } from 'react-router-dom';
 
 type Student = {
   nim: string;
@@ -68,6 +69,7 @@ export default function ExamTransactionDetail({ transaction_id }: ExamTransactio
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [modalType, setModalType] = useState('');
   const [modalForm] = Form.useForm();
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchDetails() {
@@ -340,6 +342,7 @@ export default function ExamTransactionDetail({ transaction_id }: ExamTransactio
 
   return (
     <div>
+      <Button onClick={() => navigate('/other_role_home_page')}>Back</Button>
       <Button onClick={() => setViewMode('seatMapping')}>Seat Mapping</Button>
       <Button onClick={() => setViewMode('studentDetails')}>Student Details</Button>
       {viewMode === 'seatMapping' ? renderSeatMapping() : renderStudentDetails()}

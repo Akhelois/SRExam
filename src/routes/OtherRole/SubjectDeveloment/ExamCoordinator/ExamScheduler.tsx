@@ -28,14 +28,13 @@ type Shift = {
 
 type ExamTransaction = {
   transaction_id: string;
-  subject_code_str: string;
-  room_number_str: string;
+  subject_code: string;
+  room_number: string;
   shift_id: string;
   transaction_date: string;
-  transaction_time: string;
-  seat_number: string;
-  status: string;
-};
+  proctor?: string | null;
+  status?: string | null;
+}
 
 export default function ExamScheduler(): JSX.Element {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);

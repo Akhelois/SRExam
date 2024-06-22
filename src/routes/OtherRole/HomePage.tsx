@@ -11,10 +11,9 @@ type ExamTransaction = {
   room_number: string;
   shift_id: string;
   transaction_date: string;
-  transaction_time: string;
-  seat_number: string;
-  status: string;
-};  
+  proctor?: string | null;
+  status?: string | null;
+};
 
 type User = {
   bn_number: string;
@@ -77,8 +76,7 @@ export default function HomePage() {
                     <span className="flex-1">{transaction.room_number}</span>
                     <span className="flex-1">{transaction.shift_id}</span>
                     <span className="flex-1">{transaction.transaction_date}</span>
-                    <span className="flex-1">{transaction.transaction_time}</span>
-                    <span className="flex-1">{transaction.seat_number}</span>
+                    <span className="flex-1">{transaction.proctor}</span>
                     <span className="flex-1">{transaction.status}</span>
                     <RouterLink to={"/exam_transaction_detail"}>
                       <a href="" className="flex-1"> ? </a>

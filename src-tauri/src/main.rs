@@ -191,46 +191,46 @@ fn change_password(
     current_user: State<'_, AppState>,
 ) -> Result<bool, String> {
     let mut conn = mysql_pool.get_conn().map_err(|e| format!("Failed to get connection: {}", e))?;
-    
+
     let user_guard = current_user.user.lock().map_err(|e| format!("Failed to lock mutex: {}", e))?;
-    
+
     if let Some(current_user) = &*user_guard {
         let nim = &current_user.user.nim;
         let initial = &current_user.user.initial;
-        
+
         let query = if let Some(initial) = initial {
             "SELECT password FROM users WHERE nim = :nim OR initial = :initial"
         } else {
             "SELECT password FROM users WHERE nim = :nim"
         };
-        
+
         let params = if let Some(initial) = initial {
             params! { "nim" => nim, "initial" => initial }
         } else {
             params! { "nim" => nim }
         };
-        
+
         let stored_password: Option<String> = conn.exec_first(query, params).map_err(|e| format!("Failed to execute query: {}", e))?;
-        
+
         if let Some(stored_password) = stored_password {
             if stored_password.is_empty() || verify(&old_password, &stored_password).map_err(|e| format!("Failed to verify password: {}", e))? {
                 if !new_password.is_empty() {
                     let hashed_new_password = hash(new_password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
-                    
+
                     let update_query = if let Some(initial) = initial {
                         "UPDATE users SET password = :new_password WHERE nim = :nim OR initial = :initial"
                     } else {
                         "UPDATE users SET password = :new_password WHERE nim = :nim"
                     };
-                    
+
                     let update_params = if let Some(initial) = initial {
                         params! { "nim" => nim, "initial" => initial, "new_password" => hashed_new_password }
                     } else {
                         params! { "nim" => nim, "new_password" => hashed_new_password }
                     };
-                    
+
                     conn.exec_drop(update_query, update_params).map_err(|e| format!("Failed to update password: {}", e))?;
-                    
+
                     return Ok(true);
                 } else {
                     return Err("New password cannot be empty".to_string());
@@ -265,6 +265,22 @@ fn edit_role(
     .map_err(|e| format!("Failed to update user role: {}", e))?;
 
     Ok(())
+}
+
+#[tauri::command]
+async fn update_exam_transaction(transaction_id: String, proctor: String, status: String, mysql_pool: State<'_, Pool>) -> Result<(), String> {
+  let mut conn = mysql_pool.get_conn().map_err(|e| format!("Failed to get connection: {}", e))?;
+
+  conn.exec_drop(
+    "UPDATE exam_transaction SET proctor = :proctor, status = :status WHERE transaction_id = :transaction_id",
+    params! {
+      "transaction_id" => transaction_id,
+      "proctor" => proctor,
+      "status" => status,
+    },
+  ).map_err(|e| format!("Failed to update exam transaction: {}", e))?;
+
+  Ok(())
 }
 
 #[tauri::command]
@@ -710,6 +726,7 @@ fn main() {
             get_password_by_nim,
             change_password,
             edit_role,
+            update_exam_transaction,
             get_room_transaction,
             get_exam_transaction,
             insert_exam_transaction

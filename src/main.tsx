@@ -11,6 +11,7 @@ import SubjectManagement from "./routes/OtherRole/SubjectDeveloment/SubjectManag
 import UserManagement from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator/UserManagement";
 import RoomManagement from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator/RoomManagement";
 import ExamScheduler from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator/ExamScheduler";
+import ExamScheduler2 from "./routes/OtherRole/SubjectDeveloment/ExamCoordinator/ExamScheduler2";
 import ExamTransactionDetail from "./routes/OtherRole/ExamTransactionDetail";
 import { QueryClient, QueryClientProvider } from 'react-query';
 
@@ -52,6 +53,10 @@ const router = createBrowserRouter([
   {
     path: "/exam_scheduler",
     element: <ExamScheduler/>
+  },
+  {
+    path: "/exam_scheduler2",
+    element: <ExamScheduler2/>
   },
   {
     path: "/exam_transaction_detail",
